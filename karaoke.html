@@ -1,39 +1,68 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Benja Karaoke | Letras sincronizadas</title>
 <style>
-:root{color-scheme:dark;--bg:#090b14;--panel:#151a2a;--border:#303951;--muted:#9aa8c1;--cyan:#22d3ee;--purple:#a78bfa;--active:#f8fafc}
+:root{color-scheme:dark;--bg:#07080f;--panel:#151a2a;--border:#303951;--muted:#9aa8c1;--cyan:#22d3ee;--purple:#a78bfa;--pink:#f472b6}
 *{box-sizing:border-box}
-body{margin:0;background:radial-gradient(ellipse at top,#202044,var(--bg) 60%);color:#f8fafc;font:16px/1.5 Segoe UI,Arial,sans-serif;min-height:100vh}
-main{max-width:1000px;margin:auto;padding:28px 18px 60px}
-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+body{margin:0;background:radial-gradient(ellipse at top,#1c1c3d,var(--bg) 60%);color:#f8fafc;font:16px/1.5 Segoe UI,Arial,sans-serif;min-height:100vh}
+body.no-scroll{overflow:hidden}
+main{max-width:1100px;margin:auto;padding:22px 16px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .logo{font-weight:900;letter-spacing:1px}.logo span{color:var(--cyan)}
 .tag{font-size:12px;color:#a5f3fc;border:1px solid #36506b;border-radius:99px;padding:6px 10px}
-h1{font-size:clamp(32px,6vw,54px);line-height:1.08;letter-spacing:-1.5px;margin:30px 0 10px}
+h2{margin:0 0 6px;font-size:20px}
 p{color:var(--muted)}
 .panel{background:linear-gradient(145deg,#171d30,#101522);border:1px solid var(--border);border-radius:20px;padding:22px;margin-top:20px}
 label{display:block;font-weight:600;margin:13px 0 7px}
-input,textarea{display:block;width:100%;padding:12px;background:#0b1020;color:white;border:1px solid #3b4660;border-radius:10px;font:inherit}
+input,textarea{display:block;width:100%;padding:12px;background:#0b1020;color:#fff;border:1px solid #3b4660;border-radius:10px;font:inherit}
 textarea{min-height:150px;resize:vertical;font-family:Consolas,monospace;font-size:13px}
-button{background:linear-gradient(90deg,#7c3aed,#4f46e5);border:0;border-radius:10px;color:white;padding:11px 16px;font-weight:700;cursor:pointer}
+textarea[aria-invalid=true]{border-color:#f87171}
+button{background:linear-gradient(90deg,#7c3aed,#4f46e5);border:0;border-radius:10px;color:#fff;padding:11px 16px;font:inherit;font-weight:700;cursor:pointer;min-height:44px}
 button.secondary{background:#242c42;border:1px solid #3b4660}
-button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible,textarea:focus-visible,audio:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 .actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
 #player{width:100%;margin-top:16px}
-#stage{min-height:270px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:25px 8px;overflow:hidden}
-#upcoming{font-size:clamp(16px,3vw,22px);color:#75819c;margin-bottom:22px;min-height:30px}
-#current{font-size:clamp(28px,5vw,48px);font-weight:900;line-height:1.5;max-width:100%;overflow-wrap:anywhere}
-.word{display:inline-block;margin:0 .12em;transition:color .12s,text-shadow .12s,transform .12s;color:#64718c}
-.word.done{color:var(--purple)}
-.word.active{color:var(--cyan);text-shadow:0 0 24px #22d3ee99;transform:scale(1.06)}
-#next{font-size:clamp(16px,3vw,22px);color:#9aa8c1;margin-top:22px;min-height:30px}
-#status{font-size:13px;margin-top:12px;color:#9aa8c1}
 .note{font-size:13px;color:#8996af}
+.msg{font-size:14px;margin:10px 0 0;min-height:21px;color:#9aa8c1}
+.msg.error{color:#fca5a5}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:650px){.grid{grid-template-columns:1fr}.panel{padding:16px}#stage{min-height:220px}}
+
+/* ===== ESCENARIO ===== */
+.stage{position:relative;overflow:hidden;border-radius:24px;border:1px solid #2b3356;background:linear-gradient(180deg,#0a0a18,#05060d);min-height:clamp(380px,66vh,680px);display:flex;flex-direction:column;box-shadow:0 20px 60px #000a}
+.stage:fullscreen{border-radius:0;border:0;min-height:100vh;height:100vh}
+.stage:-webkit-full-screen{border-radius:0;border:0;min-height:100vh;height:100vh}
+.stage.pseudo-fs{position:fixed;inset:0;z-index:100;border-radius:0;border:0;min-height:100vh;height:100vh}
+.lights{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lights i{position:absolute;width:70vmax;height:70vmax;border-radius:50%;filter:blur(70px);opacity:.28;will-change:transform}
+.lights i:nth-child(1){background:radial-gradient(circle,#7c3aed,transparent 65%);left:-25%;top:-45%;animation:drift1 24s ease-in-out infinite alternate}
+.lights i:nth-child(2){background:radial-gradient(circle,#0ea5c6,transparent 65%);right:-25%;top:-35%;animation:drift2 28s ease-in-out infinite alternate}
+.lights i:nth-child(3){background:radial-gradient(circle,#db2777,transparent 65%);left:20%;bottom:-60%;animation:drift3 32s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(18%,12%)}}
+@keyframes drift2{to{transform:translate(-16%,14%)}}
+@keyframes drift3{to{transform:translate(10%,-14%)}}
+.lines{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:clamp(14px,3vh,34px);padding:28px clamp(14px,4vw,60px)}
+.line{margin:0;max-width:100%;overflow-wrap:anywhere}
+.line.prev{font-size:clamp(16px,2.6vw,30px);color:#5d6985;min-height:1.4em}
+.line.next{font-size:clamp(18px,3vw,36px);color:#8794b0;min-height:1.4em}
+.line.current{font-size:clamp(30px,6vw,78px);font-weight:900;line-height:1.25;color:#fff}
+.stage:fullscreen .line.current,.stage.pseudo-fs .line.current{font-size:clamp(36px,7.5vw,120px)}
+.word{display:inline-block;margin:0 .1em;color:#6b7896;transition:color .15s,text-shadow .15s}
+.word.done{color:var(--purple)}
+.word.active{color:var(--cyan);text-shadow:0 0 28px #22d3ee99}
+.empty{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;gap:8px}
+.empty strong{font-size:clamp(22px,4vw,34px)}
+.empty span{color:var(--muted)}
+.empty[hidden],.lines[hidden]{display:none}
+.controls{position:relative;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;padding:12px;background:#0006;border-top:1px solid #ffffff14;transition:opacity .25s}
+.stage:fullscreen .controls,.stage.pseudo-fs .controls{opacity:.35}
+.stage:fullscreen .controls:hover,.stage:fullscreen .controls:focus-within,.stage.pseudo-fs .controls:hover,.stage.pseudo-fs .controls:focus-within{opacity:1}
+.clock{font-variant-numeric:tabular-nums;color:#b8c4dc;font-size:14px;padding:0 8px}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.panel{padding:16px}.stage{min-height:420px}}
+@media(prefers-reduced-motion:reduce){.lights i{animation:none}.word,.controls{transition:none}}
 </style>
 </head>
 <body>
@@ -43,146 +72,231 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <div class="tag">LETRAS SINCRONIZADAS</div>
 </header>
 
-<h1>Canta al ritmo.<br><span style="color:var(--cyan)">Palabra por palabra.</span></h1>
-<p>Selecciona tu canción y carga una letra con marcas de tiempo para seguir la melodía.</p>
+<section id="stage" class="stage" aria-label="Pantalla de karaoke">
+  <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div id="empty" class="empty">
+    <strong id="emptyTitle">Selecciona un audio</strong>
+    <span id="emptyText">Elige un archivo abajo y carga la letra para empezar.</span>
+  </div>
+  <div id="lines" class="lines" aria-live="polite" hidden>
+    <p id="prev" class="line prev"></p>
+    <p id="current" class="line current"></p>
+    <p id="next" class="line next"></p>
+  </div>
+  <div class="controls" role="group" aria-label="Controles de reproducción">
+    <button id="back" class="secondary" type="button" aria-label="Retroceder 5 segundos" disabled>− 5 s</button>
+    <button id="play" type="button" aria-label="Reproducir" disabled>▶ Reproducir</button>
+    <button id="forward" class="secondary" type="button" aria-label="Adelantar 5 segundos" disabled>+ 5 s</button>
+    <span id="clock" class="clock">0:00</span>
+    <button id="fullscreen" class="secondary" type="button" aria-label="Entrar en pantalla completa">⛶ Pantalla completa</button>
+  </div>
+</section>
+<p class="note">Atajos: Espacio = reproducir/pausar · ← → = ∓5 s · F = pantalla completa · Esc = salir.</p>
 
 <section class="panel">
   <h2>1. Selecciona el audio</h2>
   <label for="audioFile">Archivo de audio local</label>
   <input id="audioFile" type="file" accept="audio/*">
   <audio id="player" controls preload="metadata"></audio>
-  <p class="note">El audio se reproduce en tu navegador. No se carga a un servidor.</p>
+  <p id="status" class="msg" role="status">Esperando audio.</p>
+  <p class="note">El audio se reproduce en tu navegador. No se sube a ningún servidor.</p>
 </section>
 
 <section class="panel">
   <h2>2. Letra y tiempos</h2>
-  <p>Formato: segundos|texto. Usa una línea por frase; los tiempos deben corresponder al audio.</p>
+  <p>Formato: <code>segundos|texto</code>, una frase por línea, en orden creciente.</p>
   <label for="lyrics">Letra sincronizada</label>
-  <textarea id="lyrics" spellcheck="false">0|Cuando empieza la música
+  <textarea id="lyrics" spellcheck="false" aria-describedby="lyricsError">0|Cuando empieza la música
 4|prepara tu voz
 8|sigue cada palabra
 12|y canta conmigo</textarea>
+  <p id="lyricsError" class="msg" role="alert"></p>
   <div class="actions">
-    <button id="loadLyrics">Cargar letra</button>
-    <button id="demo" class="secondary">Restaurar ejemplo</button>
+    <button id="loadLyrics" type="button">Cargar letra</button>
+    <button id="demo" class="secondary" type="button">Restaurar ejemplo</button>
   </div>
-  <p class="note">Ejemplo de formato: 12.5|Y ahora canta conmigo</p>
+  <p class="note">Ejemplo: 12.5|Y ahora canta conmigo. El resaltado por palabra es aproximado: reparte el tiempo de la frase de forma uniforme, no es alineación real.</p>
 </section>
 
-<section class="panel">
-  <h2>3. Pantalla de karaoke</h2>
-  <div id="stage" aria-live="polite">
-    <div id="upcoming"></div>
-    <div id="current">Selecciona un audio y carga la letra</div>
-    <div id="next"></div>
-  </div>
-  <div class="actions">
-    <button id="back" class="secondary">− 5 segundos</button>
-    <button id="forward" class="secondary">+ 5 segundos</button>
-  </div>
-  <div id="status">Esperando audio y letra.</div>
-</section>
-
-<footer class="note" style="margin-top:22px">
-  Benja Karaoke · Versión local inicial · La sincronización depende de la precisión de los tiempos introducidos.
-</footer>
+<footer class="note" style="margin-top:22px">Benja Karaoke · Versión local · La sincronización depende de la precisión de los tiempos introducidos.</footer>
 </main>
 
 <script>
 (function(){
-  const audio=document.getElementById('player');
-  const file=document.getElementById('audioFile');
-  const editor=document.getElementById('lyrics');
-  const current=document.getElementById('current');
-  const upcoming=document.getElementById('upcoming');
-  const next=document.getElementById('next');
-  const status=document.getElementById('status');
-  let lines=[];
-  let objectUrl=null;
-
+  const $=id=>document.getElementById(id);
+  const audio=$('player'),file=$('audioFile'),editor=$('lyrics'),stage=$('stage');
+  const prevEl=$('prev'),curEl=$('current'),nextEl=$('next');
+  const empty=$('empty'),emptyTitle=$('emptyTitle'),emptyText=$('emptyText'),linesBox=$('lines');
+  const status=$('status'),lyricsError=$('lyricsError'),clock=$('clock');
+  const playBtn=$('play'),backBtn=$('back'),fwdBtn=$('forward'),fsBtn=$('fullscreen');
   const example='0|Cuando empieza la música\n4|prepara tu voz\n8|sigue cada palabra\n12|y canta conmigo';
+  let lines=[],objectUrl=null,rafId=0,lastKey='',audioReady=false,pseudoFs=false;
+
+  function fmt(t){t=Math.max(0,Math.floor(t||0));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');}
+  function setStatus(msg,isError){status.textContent=msg;status.classList.toggle('error',!!isError);}
 
   function parseLyrics(){
-    const parsed=[];
-    const rows=editor.value.split(/\r?\n/);
+    const parsed=[],rows=editor.value.split(/\r?\n/);
     for(let i=0;i<rows.length;i++){
       const row=rows[i].trim();
       if(!row)continue;
-      const match=row.match(/^(\d+(?:\.\d+)?)\s*\|\s*(.+)$/);
-      if(!match)throw new Error('Línea '+(i+1)+': usa segundos|texto.');
-      parsed.push({time:Number(match[1]),text:match[2].trim()});
+      const m=row.match(/^(\d+(?:\.\d+)?)\s*\|\s*(.+)$/);
+      if(!m)throw new Error('Línea '+(i+1)+': usa el formato segundos|texto.');
+      const time=Number(m[1]);
+      if(!Number.isFinite(time))throw new Error('Línea '+(i+1)+': el tiempo no es válido.');
+      if(parsed.length&&time<=parsed[parsed.length-1].time)throw new Error('Línea '+(i+1)+': el tiempo debe ser mayor que el de la frase anterior.');
+      parsed.push({time:time,text:m[2].trim()});
     }
     if(!parsed.length)throw new Error('Introduce al menos una línea.');
-    for(let i=1;i<parsed.length;i++){
-      if(parsed[i].time<=parsed[i-1].time)throw new Error('Los tiempos deben estar en orden creciente.');
-    }
     return parsed;
   }
 
-  function renderLine(index,time){
-    if(index<0){upcoming.textContent='';current.textContent='La canción todavía no empieza';next.textContent=lines[0]?.text||'';return;}
-    const line=lines[index];
-    const words=line.text.split(/\s+/);
-    const end=lines[index+1]?.time ?? Infinity;
-    const duration=end-line.time;
-    const progress=duration>0&&Number.isFinite(duration)?Math.max(0,Math.min(0.999,(time-line.time)/duration)):0;
-    const active=Math.min(words.length-1,Math.floor(progress*words.length));
+  function refreshState(){
+    const hasLines=lines.length>0;
+    const showEmpty=!(audioReady&&hasLines);
+    empty.hidden=!showEmpty;linesBox.hidden=showEmpty;
+    if(!audioReady&&!hasLines){emptyTitle.textContent='Selecciona un audio y carga una letra';emptyText.textContent='Empieza por el panel 1 y el panel 2, aquí abajo.';}
+    else if(!audioReady){emptyTitle.textContent='Selecciona un audio';emptyText.textContent='La letra está lista. Falta elegir el archivo de audio (panel 1).';}
+    else if(!hasLines){emptyTitle.textContent='Carga una letra';emptyText.textContent='El audio está listo. Pulsa «Cargar letra» en el panel 2.';}
+    [playBtn,backBtn,fwdBtn].forEach(b=>{b.disabled=!audioReady;});
+    lastKey='';
+    update();
+  }
 
-    upcoming.textContent=lines[index-1]?.text||'';
-    current.replaceChildren();
-    words.forEach((word,i)=>{
-      const span=document.createElement('span');
-      span.className='word'+(i<active?' done':'')+(i===active?' active':'');
-      span.textContent=word;
-      current.appendChild(span);
-      if(i<words.length-1)current.appendChild(document.createTextNode(' '));
+  function renderWords(text,active){
+    curEl.replaceChildren();
+    const words=text.split(/\s+/);
+    words.forEach((w,i)=>{
+      const s=document.createElement('span');
+      s.className='word'+(i<active?' done':'')+(i===active?' active':'');
+      s.textContent=w;
+      curEl.appendChild(s);
+      if(i<words.length-1)curEl.appendChild(document.createTextNode(' '));
     });
-    next.textContent=lines[index+1]?.text||'';
-    status.textContent='Tiempo: '+time.toFixed(1)+' s · Frase '+(index+1)+' de '+lines.length;
   }
 
   function update(){
-    if(!lines.length)return;
     const time=audio.currentTime||0;
-    let low=0,high=lines.length-1,index=-1;
-    while(low<=high){
-      const mid=(low+high)>>1;
-      if(lines[mid].time<=time){index=mid;low=mid+1;}
-      else high=mid-1;
+    clock.textContent=fmt(time)+(Number.isFinite(audio.duration)?' / '+fmt(audio.duration):'');
+    if(!lines.length||!audioReady)return;
+    let lo=0,hi=lines.length-1,index=-1;
+    while(lo<=hi){const mid=(lo+hi)>>1;if(lines[mid].time<=time){index=mid;lo=mid+1;}else hi=mid-1;}
+    let active=0,key=String(index);
+    if(index>=0){
+      const words=lines[index].text.split(/\s+/);
+      const end=lines[index+1]?lines[index+1].time:Infinity;
+      const dur=end-lines[index].time;
+      const prog=dur>0&&Number.isFinite(dur)?Math.max(0,Math.min(0.999,(time-lines[index].time)/dur)):0;
+      active=Math.min(words.length-1,Math.floor(prog*words.length));
+      key+=':'+active;
     }
-    renderLine(index,time);
+    if(key===lastKey)return;
+    lastKey=key;
+    if(index<0){prevEl.textContent='';curEl.textContent='♪';nextEl.textContent=lines[0].text;return;}
+    prevEl.textContent=index>0?lines[index-1].text:'';
+    renderWords(lines[index].text,active);
+    nextEl.textContent=index+1<lines.length?lines[index+1].text:'';
   }
 
-  document.getElementById('loadLyrics').addEventListener('click',()=>{
+  function loop(){update();rafId=requestAnimationFrame(loop);}
+  function startLoop(){if(!rafId)rafId=requestAnimationFrame(loop);}
+  function stopLoop(){if(rafId){cancelAnimationFrame(rafId);rafId=0;}update();}
+
+  function setPlayLabel(){
+    const playing=!audio.paused&&!audio.ended;
+    playBtn.textContent=playing?'⏸ Pausar':'▶ Reproducir';
+    playBtn.setAttribute('aria-label',playing?'Pausar':'Reproducir');
+  }
+  function togglePlay(){
+    if(!audioReady)return;
+    if(audio.paused){audio.play().catch(e=>setStatus('No se pudo reproducir: '+(e&&e.message?e.message:'error desconocido'),true));}
+    else audio.pause();
+  }
+  function seekBy(d){
+    if(!audioReady)return;
+    const max=Number.isFinite(audio.duration)?audio.duration:Infinity;
+    audio.currentTime=Math.min(max,Math.max(0,audio.currentTime+d));
+    update();
+  }
+
+  /* Pantalla completa con fallback */
+  function isFs(){return pseudoFs||document.fullscreenElement===stage||document.webkitFullscreenElement===stage;}
+  function syncFsUi(){
+    const on=isFs();
+    fsBtn.textContent=on?'✕ Salir de pantalla completa':'⛶ Pantalla completa';
+    fsBtn.setAttribute('aria-label',on?'Salir de pantalla completa':'Entrar en pantalla completa');
+  }
+  function exitPseudo(){pseudoFs=false;stage.classList.remove('pseudo-fs');document.body.classList.remove('no-scroll');}
+  function enterPseudo(){pseudoFs=true;stage.classList.add('pseudo-fs');document.body.classList.add('no-scroll');}
+  async function toggleFs(){
+    if(pseudoFs){exitPseudo();syncFsUi();return;}
+    if(document.fullscreenElement||document.webkitFullscreenElement){
+      try{await (document.exitFullscreen||document.webkitExitFullscreen).call(document);}catch(e){}
+      return;
+    }
+    const req=stage.requestFullscreen||stage.webkitRequestFullscreen;
+    if(req){try{await req.call(stage);return;}catch(e){}}
+    enterPseudo();syncFsUi();
+  }
+  document.addEventListener('fullscreenchange',syncFsUi);
+  document.addEventListener('webkitfullscreenchange',syncFsUi);
+
+  /* Eventos */
+  $('loadLyrics').addEventListener('click',()=>{
     try{
       lines=parseLyrics();
-      update();
-      status.textContent='Letra cargada: '+lines.length+' frases.';
-    }catch(error){status.textContent=error.message;}
+      lyricsError.textContent='';lyricsError.classList.remove('error');
+      editor.removeAttribute('aria-invalid');
+      setStatus('Letra cargada: '+lines.length+' frases.');
+      refreshState();
+    }catch(err){
+      lyricsError.textContent=err.message;lyricsError.classList.add('error');
+      editor.setAttribute('aria-invalid','true');
+    }
   });
-
-  document.getElementById('demo').addEventListener('click',()=>{
+  $('demo').addEventListener('click',()=>{
     editor.value=example;
-    status.textContent='Ejemplo restaurado. Pulsa Cargar letra.';
+    lyricsError.textContent='';editor.removeAttribute('aria-invalid');
+    setStatus('Ejemplo restaurado. Pulsa «Cargar letra».');
   });
-
   file.addEventListener('change',()=>{
-    const selected=file.files&&file.files[0];
-    if(!selected)return;
+    const sel=file.files&&file.files[0];
+    if(!sel)return;
     if(objectUrl)URL.revokeObjectURL(objectUrl);
-    objectUrl=URL.createObjectURL(selected);
-    audio.src=objectUrl;
-    audio.load();
-    status.textContent='Audio seleccionado: '+selected.name;
+    audioReady=false;refreshState();
+    objectUrl=URL.createObjectURL(sel);
+    audio.src=objectUrl;audio.load();
+    setStatus('Cargando: '+sel.name);
+  });
+  audio.addEventListener('loadedmetadata',()=>{audioReady=true;setStatus('Audio listo: '+(file.files[0]?file.files[0].name:''));refreshState();});
+  audio.addEventListener('error',()=>{
+    audioReady=false;refreshState();
+    const c=audio.error&&audio.error.code;
+    const msgs={2:'Error de lectura del archivo.',3:'No se pudo decodificar el audio.',4:'Formato de audio no compatible con este navegador.'};
+    setStatus((msgs[c]||'No se pudo cargar el audio.')+' Prueba con otro archivo (MP3, WAV, M4A u OGG).',true);
+  });
+  audio.addEventListener('play',()=>{setPlayLabel();startLoop();});
+  audio.addEventListener('pause',()=>{setPlayLabel();stopLoop();});
+  audio.addEventListener('ended',()=>{setPlayLabel();stopLoop();});
+  audio.addEventListener('seeked',update);
+  audio.addEventListener('timeupdate',()=>{if(!rafId)update();});
+  playBtn.addEventListener('click',togglePlay);
+  backBtn.addEventListener('click',()=>seekBy(-5));
+  fwdBtn.addEventListener('click',()=>seekBy(5));
+  fsBtn.addEventListener('click',toggleFs);
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&pseudoFs){exitPseudo();syncFsUi();return;}
+    const t=e.target,tag=t&&t.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||tag==='BUTTON'||tag==='AUDIO'||e.ctrlKey||e.metaKey||e.altKey)return;
+    if(e.key===' '){e.preventDefault();togglePlay();}
+    else if(e.key==='ArrowLeft'){e.preventDefault();seekBy(-5);}
+    else if(e.key==='ArrowRight'){e.preventDefault();seekBy(5);}
+    else if(e.key==='f'||e.key==='F'){toggleFs();}
   });
 
-  audio.addEventListener('timeupdate',update);
-  audio.addEventListener('seeked',update);
-  audio.addEventListener('loadedmetadata',update);
-  document.getElementById('back').addEventListener('click',()=>{audio.currentTime=Math.max(0,audio.currentTime-5);update();});
-  document.getElementById('forward').addEventListener('click',()=>{audio.currentTime=Math.min(audio.duration||Infinity,audio.currentTime+5);update();});
-
-  try{lines=parseLyrics();update();}catch(e){}
+  try{lines=parseLyrics();}catch(e){}
+  refreshState();
+  setPlayLabel();syncFsUi();
 })();
 </script>
 </body>
