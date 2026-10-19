@@ -1,0 +1,40 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.venv/
+venv/
+env/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+instance/
+
+# Test and tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local backups
+.backups/
+*.backup-*
+
+# Audio outputs and user data
+uploads/
+storage/
+outputs/
+separated/
+*.wav
+*.mp3
+*.flac
+*.ogg
+
+# Editor and operating system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

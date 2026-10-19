@@ -1,0 +1,189 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benja Karaoke | Letras sincronizadas</title>
+<style>
+:root{color-scheme:dark;--bg:#090b14;--panel:#151a2a;--border:#303951;--muted:#9aa8c1;--cyan:#22d3ee;--purple:#a78bfa;--active:#f8fafc}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top,#202044,var(--bg) 60%);color:#f8fafc;font:16px/1.5 Segoe UI,Arial,sans-serif;min-height:100vh}
+main{max-width:1000px;margin:auto;padding:28px 18px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.logo{font-weight:900;letter-spacing:1px}.logo span{color:var(--cyan)}
+.tag{font-size:12px;color:#a5f3fc;border:1px solid #36506b;border-radius:99px;padding:6px 10px}
+h1{font-size:clamp(32px,6vw,54px);line-height:1.08;letter-spacing:-1.5px;margin:30px 0 10px}
+p{color:var(--muted)}
+.panel{background:linear-gradient(145deg,#171d30,#101522);border:1px solid var(--border);border-radius:20px;padding:22px;margin-top:20px}
+label{display:block;font-weight:600;margin:13px 0 7px}
+input,textarea{display:block;width:100%;padding:12px;background:#0b1020;color:white;border:1px solid #3b4660;border-radius:10px;font:inherit}
+textarea{min-height:150px;resize:vertical;font-family:Consolas,monospace;font-size:13px}
+button{background:linear-gradient(90deg,#7c3aed,#4f46e5);border:0;border-radius:10px;color:white;padding:11px 16px;font-weight:700;cursor:pointer}
+button.secondary{background:#242c42;border:1px solid #3b4660}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+#player{width:100%;margin-top:16px}
+#stage{min-height:270px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:25px 8px;overflow:hidden}
+#upcoming{font-size:clamp(16px,3vw,22px);color:#75819c;margin-bottom:22px;min-height:30px}
+#current{font-size:clamp(28px,5vw,48px);font-weight:900;line-height:1.5;max-width:100%;overflow-wrap:anywhere}
+.word{display:inline-block;margin:0 .12em;transition:color .12s,text-shadow .12s,transform .12s;color:#64718c}
+.word.done{color:var(--purple)}
+.word.active{color:var(--cyan);text-shadow:0 0 24px #22d3ee99;transform:scale(1.06)}
+#next{font-size:clamp(16px,3vw,22px);color:#9aa8c1;margin-top:22px;min-height:30px}
+#status{font-size:13px;margin-top:12px;color:#9aa8c1}
+.note{font-size:13px;color:#8996af}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.panel{padding:16px}#stage{min-height:220px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="logo">BENJA <span>KARAOKE</span></div>
+  <div class="tag">LETRAS SINCRONIZADAS</div>
+</header>
+
+<h1>Canta al ritmo.<br><span style="color:var(--cyan)">Palabra por palabra.</span></h1>
+<p>Selecciona tu canción y carga una letra con marcas de tiempo para seguir la melodía.</p>
+
+<section class="panel">
+  <h2>1. Selecciona el audio</h2>
+  <label for="audioFile">Archivo de audio local</label>
+  <input id="audioFile" type="file" accept="audio/*">
+  <audio id="player" controls preload="metadata"></audio>
+  <p class="note">El audio se reproduce en tu navegador. No se carga a un servidor.</p>
+</section>
+
+<section class="panel">
+  <h2>2. Letra y tiempos</h2>
+  <p>Formato: segundos|texto. Usa una línea por frase; los tiempos deben corresponder al audio.</p>
+  <label for="lyrics">Letra sincronizada</label>
+  <textarea id="lyrics" spellcheck="false">0|Cuando empieza la música
+4|prepara tu voz
+8|sigue cada palabra
+12|y canta conmigo</textarea>
+  <div class="actions">
+    <button id="loadLyrics">Cargar letra</button>
+    <button id="demo" class="secondary">Restaurar ejemplo</button>
+  </div>
+  <p class="note">Ejemplo de formato: 12.5|Y ahora canta conmigo</p>
+</section>
+
+<section class="panel">
+  <h2>3. Pantalla de karaoke</h2>
+  <div id="stage" aria-live="polite">
+    <div id="upcoming"></div>
+    <div id="current">Selecciona un audio y carga la letra</div>
+    <div id="next"></div>
+  </div>
+  <div class="actions">
+    <button id="back" class="secondary">− 5 segundos</button>
+    <button id="forward" class="secondary">+ 5 segundos</button>
+  </div>
+  <div id="status">Esperando audio y letra.</div>
+</section>
+
+<footer class="note" style="margin-top:22px">
+  Benja Karaoke · Versión local inicial · La sincronización depende de la precisión de los tiempos introducidos.
+</footer>
+</main>
+
+<script>
+(function(){
+  const audio=document.getElementById('player');
+  const file=document.getElementById('audioFile');
+  const editor=document.getElementById('lyrics');
+  const current=document.getElementById('current');
+  const upcoming=document.getElementById('upcoming');
+  const next=document.getElementById('next');
+  const status=document.getElementById('status');
+  let lines=[];
+  let objectUrl=null;
+
+  const example='0|Cuando empieza la música\n4|prepara tu voz\n8|sigue cada palabra\n12|y canta conmigo';
+
+  function parseLyrics(){
+    const parsed=[];
+    const rows=editor.value.split(/\r?\n/);
+    for(let i=0;i<rows.length;i++){
+      const row=rows[i].trim();
+      if(!row)continue;
+      const match=row.match(/^(\d+(?:\.\d+)?)\s*\|\s*(.+)$/);
+      if(!match)throw new Error('Línea '+(i+1)+': usa segundos|texto.');
+      parsed.push({time:Number(match[1]),text:match[2].trim()});
+    }
+    if(!parsed.length)throw new Error('Introduce al menos una línea.');
+    for(let i=1;i<parsed.length;i++){
+      if(parsed[i].time<=parsed[i-1].time)throw new Error('Los tiempos deben estar en orden creciente.');
+    }
+    return parsed;
+  }
+
+  function renderLine(index,time){
+    if(index<0){upcoming.textContent='';current.textContent='La canción todavía no empieza';next.textContent=lines[0]?.text||'';return;}
+    const line=lines[index];
+    const words=line.text.split(/\s+/);
+    const end=lines[index+1]?.time ?? Infinity;
+    const duration=end-line.time;
+    const progress=duration>0&&Number.isFinite(duration)?Math.max(0,Math.min(0.999,(time-line.time)/duration)):0;
+    const active=Math.min(words.length-1,Math.floor(progress*words.length));
+
+    upcoming.textContent=lines[index-1]?.text||'';
+    current.replaceChildren();
+    words.forEach((word,i)=>{
+      const span=document.createElement('span');
+      span.className='word'+(i<active?' done':'')+(i===active?' active':'');
+      span.textContent=word;
+      current.appendChild(span);
+      if(i<words.length-1)current.appendChild(document.createTextNode(' '));
+    });
+    next.textContent=lines[index+1]?.text||'';
+    status.textContent='Tiempo: '+time.toFixed(1)+' s · Frase '+(index+1)+' de '+lines.length;
+  }
+
+  function update(){
+    if(!lines.length)return;
+    const time=audio.currentTime||0;
+    let low=0,high=lines.length-1,index=-1;
+    while(low<=high){
+      const mid=(low+high)>>1;
+      if(lines[mid].time<=time){index=mid;low=mid+1;}
+      else high=mid-1;
+    }
+    renderLine(index,time);
+  }
+
+  document.getElementById('loadLyrics').addEventListener('click',()=>{
+    try{
+      lines=parseLyrics();
+      update();
+      status.textContent='Letra cargada: '+lines.length+' frases.';
+    }catch(error){status.textContent=error.message;}
+  });
+
+  document.getElementById('demo').addEventListener('click',()=>{
+    editor.value=example;
+    status.textContent='Ejemplo restaurado. Pulsa Cargar letra.';
+  });
+
+  file.addEventListener('change',()=>{
+    const selected=file.files&&file.files[0];
+    if(!selected)return;
+    if(objectUrl)URL.revokeObjectURL(objectUrl);
+    objectUrl=URL.createObjectURL(selected);
+    audio.src=objectUrl;
+    audio.load();
+    status.textContent='Audio seleccionado: '+selected.name;
+  });
+
+  audio.addEventListener('timeupdate',update);
+  audio.addEventListener('seeked',update);
+  audio.addEventListener('loadedmetadata',update);
+  document.getElementById('back').addEventListener('click',()=>{audio.currentTime=Math.max(0,audio.currentTime-5);update();});
+  document.getElementById('forward').addEventListener('click',()=>{audio.currentTime=Math.min(audio.duration||Infinity,audio.currentTime+5);update();});
+
+  try{lines=parseLyrics();update();}catch(e){}
+})();
+</script>
+</body>
+</html>

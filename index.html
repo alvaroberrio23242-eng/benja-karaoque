@@ -1,0 +1,203 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benja Karaoke</title>
+<style>
+:root{color-scheme:dark;--bg:#090b14;--panel:#131827;--line:#29324a;--a:#8b5cf6;--b:#22d3ee}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top,#202044,#090b14 58%);color:#f4f5ff;font:16px/1.5 Segoe UI,Arial,sans-serif;min-height:100vh}
+main{max-width:1050px;margin:auto;padding:38px 22px 70px}
+header{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}
+.logo{font-weight:800;letter-spacing:.5px}.logo span{color:var(--b)}
+.pill{border:1px solid #36506b;color:#a5f3fc;padding:7px 12px;border-radius:99px;font-size:13px}
+.hero{padding:65px 0 35px;max-width:750px}
+.eyebrow{color:#a5b4fc;text-transform:uppercase;letter-spacing:3px;font-size:12px;font-weight:700}
+h1{font-size:clamp(42px,8vw,76px);line-height:1.03;letter-spacing:-3px;margin:14px 0}
+h1 span{background:linear-gradient(90deg,#a78bfa,#22d3ee);color:transparent;background-clip:text}
+p{color:#aeb8ce}
+.panel{background:linear-gradient(145deg,#171d30,#101522);border:1px solid var(--line);border-radius:22px;padding:25px;margin-top:22px}
+.panel h2{margin:0 0 8px;font-size:22px}
+.upload{display:block;border:1px dashed #586581;border-radius:16px;padding:25px;text-align:center;margin-top:20px;cursor:pointer}
+input[type=file]{max-width:100%;margin-top:15px}
+button{background:linear-gradient(90deg,var(--a),#6366f1);border:0;border-radius:12px;color:white;padding:13px 18px;font-weight:700;cursor:pointer;margin-top:17px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:18px}
+.tile{background:#0d1220;border:1px solid var(--line);border-radius:15px;padding:17px}
+.tile strong{display:block;margin-bottom:5px}.tile small{color:#9ba8c0}
+.note{font-size:13px;color:#8e9ab3}
+audio{width:100%;margin-top:12px}
+footer{margin-top:32px;color:#78849e;font-size:13px}
+</style>
+<style id="benja-youtube-search-styles">
+/* BENJA KARAOKE — BUSCADOR YOUTUBE */
+#benja-youtube-search{margin-top:24px}
+#benja-youtube-search .youtube-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+#benja-youtube-search .youtube-heading h2{margin:0 0 8px}
+#benja-youtube-search .youtube-heading p{margin:6px 0;color:#aeb8ce}
+#benja-youtube-search .youtube-eyebrow{font-size:12px;letter-spacing:2px;color:#a5b4fc!important;font-weight:700}
+#benja-youtube-search .youtube-logo{color:#ff5364;font-weight:800;white-space:nowrap}
+#benja-youtube-search .youtube-label{display:block;margin-bottom:8px;font-weight:600}
+#benja-youtube-search .youtube-form{margin-top:22px}
+#benja-youtube-search .youtube-search-row{display:flex;gap:10px;align-items:stretch}
+#benja-youtube-search .youtube-search-row input{flex:1;min-width:0;width:100%;background:#0d1220;color:#f4f5ff;border:1px solid #39445f;border-radius:12px;padding:14px;font:inherit}
+#benja-youtube-search .youtube-search-row input:focus{outline:2px solid #8b5cf6;outline-offset:2px}
+#benja-youtube-search .youtube-search-row button{margin-top:0;white-space:nowrap}
+#benja-youtube-search .youtube-shortcuts{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+#benja-youtube-search .youtube-shortcuts button{margin-top:0;background:#202840;border:1px solid #39445f;color:#dce5ff;padding:8px 12px;border-radius:999px}
+#benja-youtube-search .youtube-results{margin-top:18px}
+#benja-youtube-search .youtube-empty{min-height:130px;border:1px dashed #39445f;border-radius:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;gap:7px}
+#benja-youtube-search .youtube-empty span:last-child{font-size:13px;color:#9ba8c0}
+#benja-youtube-search .youtube-play-icon{font-size:28px;color:#ff5364}
+#benja-youtube-search .youtube-disclaimer{font-size:12px;color:#8e9ab3;margin-top:16px}
+@media(max-width:520px){#benja-youtube-search .youtube-search-row{flex-direction:column}#benja-youtube-search .youtube-search-row button{width:100%}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="logo">BENJA <span>KARAOKE</span></div><div class="pill">● Vista previa local</div></header>
+<section class="hero">
+<div class="eyebrow">Tu música · Tu versión</div>
+<h1>La voz se separa.<br><span>La música continúa.</span></h1>
+<p>Un espacio para preparar pistas instrumentales con inteligencia artificial y organizar tus archivos de audio.</p>
+</section>
+<section class="panel">
+<h2>01 / Selecciona tu canción</h2>
+<p>Elige un archivo de audio desde tu equipo para escuchar una vista previa.</p>
+<label class="upload">♫<br><strong>Seleccionar archivo de audio</strong><br><span class="note">MP3, WAV, FLAC, M4A u OGG</span>
+<input id="audioFile" type="file" accept="audio/*">
+</label>
+<div id="preview"></div>
+</section>
+<section class="panel">
+<h2>02 / Separación de audio</h2>
+<p>El motor Demucs está instalado localmente. Esta pantalla es una vista previa visual; todavía no ejecuta la separación.</p>
+<div class="grid">
+<div class="tile">🎤 <strong>Voz</strong><small>Vocales aisladas</small></div>
+<div class="tile">🥁 <strong>Percusión</strong><small>Batería y ritmos</small></div>
+<div class="tile">🎸 <strong>Bajo</strong><small>Línea de bajo</small></div>
+<div class="tile">🎹 <strong>Otros instrumentos</strong><small>Armonía y acompañamiento</small></div>
+</div>
+<p class="note">Siguiente fase: conectar esta interfaz con el procesamiento real mediante Python.</p>
+</section>
+<footer>Benja Karaoke · Prototipo local · No se suben archivos desde esta página.</footer>
+<section id="benja-youtube-search" class="panel">
+  <div class="youtube-heading">
+    <div>
+      <p class="youtube-eyebrow">BUSCADOR MUSICAL</p>
+      <h2>Encuentra tu próxima canción</h2>
+      <p>Busca artistas, canciones, versiones instrumentales o pistas de karaoke en YouTube.</p>
+    </div>
+    <span class="youtube-logo" aria-label="YouTube">▶ YouTube</span>
+  </div>
+
+  <form id="benja-youtube-form" class="youtube-form">
+    <label class="youtube-label" for="benja-youtube-query">¿Qué quieres cantar?</label>
+    <div class="youtube-search-row">
+      <input
+        id="benja-youtube-query"
+        type="search"
+        maxlength="180"
+        placeholder="Ej. Marc Anthony Vivir mi vida karaoke"
+        autocomplete="off"
+        required
+      >
+      <button type="submit">Buscar</button>
+    </div>
+    <div class="youtube-shortcuts" aria-label="Búsquedas rápidas">
+      <button type="button" data-youtube-query="karaoke salsa instrumental">Salsa karaoke</button>
+      <button type="button" data-youtube-query="karaoke baladas en español">Baladas</button>
+      <button type="button" data-youtube-query="karaoke reggaeton español">Reguetón</button>
+    </div>
+  </form>
+
+  <div id="benja-youtube-results" class="youtube-results" aria-live="polite">
+    <div class="youtube-empty">
+      <span class="youtube-play-icon">▶</span>
+      <strong>Tu próxima canción empieza aquí</strong>
+      <span>Escribe una búsqueda y abre los resultados oficiales de YouTube.</span>
+    </div>
+  </div>
+
+  <p class="youtube-disclaimer">
+    Las búsquedas se abren en YouTube. Esta integración no descarga videos ni extrae su audio.
+  </p>
+</section>
+</main>
+<script>
+const input=document.getElementById('audioFile');
+const preview=document.getElementById('preview');
+let currentUrl;
+input.addEventListener('change',()=>{
+  if(currentUrl)URL.revokeObjectURL(currentUrl);
+  const file=input.files && input.files[0];
+  if(!file){preview.replaceChildren();return;}
+  currentUrl=URL.createObjectURL(file);
+  const title=document.createElement('p');
+  title.textContent='Archivo seleccionado: '+file.name;
+  const player=document.createElement('audio');
+  player.controls=true;
+  player.src=currentUrl;
+  preview.replaceChildren(title,player);
+});
+</script>
+<script id="benja-youtube-search-script">
+(function () {
+  const form = document.getElementById('benja-youtube-form');
+  const input = document.getElementById('benja-youtube-query');
+  const results = document.getElementById('benja-youtube-results');
+
+  if (!form || !input || !results || form.dataset.initialized === 'true') return;
+  form.dataset.initialized = 'true';
+
+  function searchYouTube(query) {
+    const clean = String(query || '').trim();
+    if (!clean) {
+      input.focus();
+      return;
+    }
+
+    input.value = clean;
+
+    const card = document.createElement('div');
+    card.className = 'youtube-empty';
+
+    const icon = document.createElement('span');
+    icon.className = 'youtube-play-icon';
+    icon.textContent = '▶';
+
+    const title = document.createElement('strong');
+    title.textContent = 'Búsqueda preparada';
+
+    const description = document.createElement('span');
+    description.textContent = 'Se abrirán los resultados de YouTube para: ' + clean;
+
+    const link = document.createElement('a');
+    link.href = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(clean);
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'Ver resultados en YouTube';
+    link.style.cssText = 'display:inline-block;margin-top:10px;color:#a5b4fc;font-weight:700';
+
+    card.append(icon, title, description, link);
+    results.replaceChildren(card);
+
+    window.open(link.href, '_blank', 'noopener,noreferrer');
+  }
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    searchYouTube(input.value);
+  });
+
+  document.querySelectorAll('#benja-youtube-search [data-youtube-query]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      searchYouTube(button.dataset.youtubeQuery);
+    });
+  });
+})();
+</script>
+</body>
+</html>
+
