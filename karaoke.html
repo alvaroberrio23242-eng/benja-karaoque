@@ -180,7 +180,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   <label for="audioFile">Archivo de audio local</label>
   <input id="audioFile" type="file" accept="audio/*" multiple aria-describedby="libraryHelp">
   <audio id="player" preload="metadata" hidden></audio>
-  <p id="status" class="msg" role="status">Esperando audio.</p>
+  <p id="status" class="msg" role="status"><span id="playerStatus">Esperando audio.</span></p>
+  <p id="apiStatus" class="msg" role="status" aria-live="polite">API: comprobando conexión…</p>
   <p id="libraryHelp" class="note">Selecciona una o varias canciones. Los archivos permanecen en tu equipo y se reproducen en este navegador.</p>
 
 <div class="library-tools">
@@ -239,7 +240,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   const audio=$('player'),file=$('audioFile'),editor=$('lyrics'),stage=$('stage');
   const prevEl=$('prev'),curEl=$('current'),nextEl=$('next');
   const empty=$('empty'),emptyTitle=$('emptyTitle'),emptyText=$('emptyText'),linesBox=$('lines');
-  const status=$('status'),lyricsError=$('lyricsError');
+  const status=$('status'),playerStatus=$('playerStatus'),apiStatus=$('apiStatus'),lyricsError=$('lyricsError');
   const tcur=$('tcur'),tdur=$('tdur'),seek=$('seek'),skipSel=$('skip');
   const volume=$('volume'),muteBtn=$('mute'),restartBtn=$('restart');
   const playBtn=$('play'),backBtn=$('back'),fwdBtn=$('forward'),fsBtn=$('fullscreen');
@@ -248,7 +249,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 
   function fmt(t){t=Math.max(0,Math.floor(t||0));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');}
   function hasDuration(){return Number.isFinite(audio.duration)&&audio.duration>0;}
-  function setStatus(msg,isError){status.textContent=msg;status.classList.toggle('error',!!isError);}
+  function setStatus(msg,isError){playerStatus.textContent=msg;status.classList.toggle('error',!!isError);}
 
   function parseLyrics(){
     const parsed=[],rows=editor.value.split(/\r?\n/);
@@ -693,10 +694,53 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     else if(e.key==='f'||e.key==='F'){toggleFs();}
   });
 
+
+  const API_BASE_URL='https://benja-karaoque-api.onrender.com';
+
+  async function checkApiStatus(){
+    const controller=new AbortController();
+    const timeoutId=window.setTimeout(()=>controller.abort(),65000);
+    apiStatus.textContent='API: conectando con el servidor…';
+    apiStatus.classList.remove('error');
+
+    try{
+      const options={
+        method:'GET',
+        mode:'cors',
+        cache:'no-store',
+        headers:{Accept:'application/json'},
+        signal:controller.signal
+      };
+      const responses=await Promise.all([
+        fetch(API_BASE_URL+'/api/health',options),
+        fetch(API_BASE_URL+'/api/config',options)
+      ]);
+      if(responses.some(response=>!response.ok)){
+        throw new Error('La API devolvió una respuesta no válida.');
+      }
+
+      const results=await Promise.all(responses.map(response=>response.json()));
+      const health=results[0],config=results[1];
+      if(health.status!=='ok'||config.application!=='Benja Karaoke'){
+        throw new Error('La respuesta de la API no coincide con la aplicación.');
+      }
+
+      apiStatus.textContent='API conectada · servidor operativo';
+      apiStatus.title='Python '+health.python_version+' · API '+health.api_version;
+    }catch(error){
+      apiStatus.textContent='API no disponible · el karaoke local sigue funcionando';
+      apiStatus.title='No se pudo consultar el estado remoto. El audio local no depende de la API.';
+      apiStatus.classList.add('error');
+    }finally{
+      window.clearTimeout(timeoutId);
+    }
+  }
+
   try{lines=parseLyrics();}catch(e){}
   setSkip(5);
   refreshState();
   setPlayLabel();syncFsUi();syncVolumeUi();
+  checkApiStatus();
 })();
 </script>
 </body>

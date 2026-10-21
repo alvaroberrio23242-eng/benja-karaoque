@@ -6,7 +6,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 
 BASE_DIR = Path(__file__).resolve().parent
 PYTHON_DIR = BASE_DIR / ".venv" / "Scripts"
@@ -14,6 +14,35 @@ MAX_CONTENT_LENGTH = 1024 * 1024 * 1024  # 1 GiB; limite para futuras cargas.
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
+
+DEFAULT_ALLOWED_ORIGINS = {
+    "https://alvaroberrio23242-eng.github.io",
+}
+
+
+def allowed_origins() -> set[str]:
+    configured = os.getenv("CORS_ALLOWED_ORIGINS")
+    if configured is None:
+        return DEFAULT_ALLOWED_ORIGINS.copy()
+    return {
+        origin.strip().rstrip("/")
+        for origin in configured.split(",")
+        if origin.strip()
+    }
+
+
+@app.after_request
+def apply_api_cors(response):
+    # La API es de lectura desde el frontend; no habilitar credenciales ni '*'.
+    if request.path.startswith("/api/"):
+        response.vary.add("Origin")
+        origin = request.headers.get("Origin")
+        if origin and origin in allowed_origins():
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
 
 
 def package_version(distribution: str) -> str | None:

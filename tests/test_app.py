@@ -73,3 +73,49 @@ def test_payload_too_large_handler_returns_json_413():
     assert status_code == 413
     data = response.get_json()
     assert data["error"] == "payload_too_large"
+
+@pytest.mark.parametrize(
+    ("origin", "expected"),
+    [
+        (
+            "https://alvaroberrio23242-eng.github.io",
+            "https://alvaroberrio23242-eng.github.io",
+        ),
+        ("https://evil.example", None),
+    ],
+)
+def test_api_cors_restricts_origins(client, monkeypatch, origin, expected):
+    monkeypatch.delenv("CORS_ALLOWED_ORIGINS", raising=False)
+
+    response = client.get("/api/health", headers={"Origin": origin})
+
+    assert response.status_code == 200
+    assert response.headers.get("Access-Control-Allow-Origin") == expected
+    assert "Origin" in response.headers.get("Vary", "")
+
+
+def test_api_cors_accepts_configured_origin(client, monkeypatch):
+    monkeypatch.setenv(
+        "CORS_ALLOWED_ORIGINS",
+        "https://preview.example, http://localhost:5500",
+    )
+
+    response = client.get(
+        "/api/config",
+        headers={"Origin": "http://localhost:5500"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["Access-Control-Allow-Origin"] == "http://localhost:5500"
+
+
+def test_frontend_checks_api_without_replacing_player_status(client):
+    response = client.get("/karaoke.html")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert 'id="playerStatus"' in html
+    assert 'id="apiStatus"' in html
+    assert "/api/health" in html
+    assert "/api/config" in html
+    assert "karaoke local sigue funcionando" in html
