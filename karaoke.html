@@ -72,6 +72,59 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .clock{font-variant-numeric:tabular-nums;color:#b8c4dc;font-size:14px;min-width:3.2em;text-align:center}
 @media(max-width:650px){.grid{grid-template-columns:1fr}.panel{padding:16px}.stage{min-height:420px}#volume{width:80px}}
 @media(prefers-reduced-motion:reduce){.lights i{animation:none}.word,.controls{transition:none}}
+/* Fondo de video: el audio del fondo permanece silenciado. */
+.stage {
+  isolation: isolate;
+}
+.stage > .stage-video-bg {
+  position: absolute !important;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.58;
+  z-index: 0;
+  pointer-events: none;
+}
+.stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(5, 7, 20, 0.35), rgba(5, 7, 20, 0.72)),
+    linear-gradient(90deg, rgba(5, 7, 20, 0.28), transparent 55%, rgba(5, 7, 20, 0.28));
+}
+.stage > :not(.stage-video-bg) {
+  position: relative;
+  z-index: 2;
+}
+
+/* ===== BIBLIOTECA MUSICAL ===== */
+.library-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;margin-top:16px}
+.library-search{min-width:0}
+.library-search label,.source-field label{margin-top:0}
+.library-count{font-size:13px;color:var(--muted);padding-bottom:10px}
+.song-list{display:grid;gap:9px;margin-top:14px}
+.song-item{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:13px;background:#0b1020}
+.song-item.selected{border-color:var(--cyan);box-shadow:0 0 0 1px #22d3ee33}
+.song-info{flex:1;min-width:0}
+.song-name{display:block;overflow-wrap:anywhere;font-weight:700}
+.song-meta{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+.song-actions{display:flex;gap:7px;flex-wrap:wrap}
+.song-actions button{padding:8px 11px;min-height:38px}
+.library-empty{padding:20px;text-align:center;border:1px dashed #3b4660;border-radius:12px;color:var(--muted)}
+.source-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+.source-card{border:1px solid var(--border);border-radius:14px;padding:15px;background:#0b1020}
+.source-card h3{margin:0 0 6px;font-size:16px}
+.source-card p{font-size:13px;margin:0 0 12px}
+.source-field{margin-top:12px}
+.source-actions{display:flex;gap:8px;flex-wrap:wrap}
+.source-actions button{flex:1}
+#externalUrl{margin:8px 0 12px}
+@media(max-width:650px){.library-tools,.source-grid{grid-template-columns:1fr}.song-item{align-items:flex-start;flex-wrap:wrap}.song-actions{width:100%}.song-actions button{flex:1}.library-count{padding-bottom:0}}
 </style>
 </head>
 <body>
@@ -82,12 +135,15 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 </header>
 
 <section id="stage" class="stage" aria-label="Pantalla de karaoke">
+  <video id="stageVideo" class="stage-video-bg" autoplay muted loop playsinline preload="metadata" aria-hidden="true" tabindex="-1">
+    <source src="static/video/fondo-karaoke.mp4" type="video/mp4">
+  </video>
   <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
   <div id="empty" class="empty">
     <strong id="emptyTitle">Selecciona un audio</strong>
     <span id="emptyText">Elige un archivo abajo y carga la letra para empezar.</span>
   </div>
-  <div id="lines" class="lines" aria-live="polite" hidden>
+  <div id="lines" class="lines" aria-live="off" hidden>
     <p id="prev" class="line prev"></p>
     <p id="current" class="line current"></p>
     <p id="next" class="line next"></p>
@@ -122,9 +178,39 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <section class="panel">
   <h2>1. Selecciona el audio</h2>
   <label for="audioFile">Archivo de audio local</label>
-  <input id="audioFile" type="file" accept="audio/*">
-  <audio id="player" controls preload="metadata"></audio>
+  <input id="audioFile" type="file" accept="audio/*" multiple aria-describedby="libraryHelp">
+  <audio id="player" preload="metadata" hidden></audio>
   <p id="status" class="msg" role="status">Esperando audio.</p>
+  <p id="libraryHelp" class="note">Selecciona una o varias canciones. Los archivos permanecen en tu equipo y se reproducen en este navegador.</p>
+
+<div class="library-tools">
+  <div class="library-search">
+    <label for="librarySearch">Buscar en tu biblioteca</label>
+    <input id="librarySearch" type="search" placeholder="Nombre de la canción o archivo..." autocomplete="off">
+  </div>
+  <span id="libraryCount" class="library-count" aria-live="polite">0 canciones</span>
+</div>
+
+<div id="songList" class="song-list">
+  <div class="library-empty">Selecciona archivos de audio para crear tu biblioteca de esta sesión.</div>
+</div>
+
+<div class="source-grid">
+  <div class="source-card">
+    <h3>YouTube</h3>
+    <p>Pega un enlace de YouTube para abrir la canción en su plataforma oficial.</p>
+    <button id="openYoutube" type="button" class="secondary">Abrir YouTube</button>
+  </div>
+  <div class="source-card">
+    <h3>Spotify</h3>
+    <p>Abre canciones o listas de Spotify sin extraer su audio.</p>
+    <button id="openSpotify" type="button" class="secondary">Abrir Spotify</button>
+  </div>
+</div>
+
+<label for="externalUrl">Enlace de YouTube o Spotify</label>
+<input id="externalUrl" type="url" placeholder="https://www.youtube.com/watch?v=... o https://open.spotify.com/..." autocomplete="url">
+<p id="externalStatus" class="msg" role="status"></p>
   <p class="note">El audio se reproduce en tu navegador. No se sube a ningún servidor.</p>
 </section>
 
@@ -141,7 +227,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     <button id="loadLyrics" type="button">Cargar letra</button>
     <button id="demo" class="secondary" type="button">Restaurar ejemplo</button>
   </div>
-  <p class="note">Ejemplo: 12.5|Y ahora canta conmigo. El resaltado por palabra es aproximado: reparte el tiempo de la frase de forma uniforme, no es alineación real.</p>
+  <p class="note">Ejemplo: 12.5|Y ahora canta conmigo. Formato opcional: segundos|texto|tiempos. Ejemplo: 0|Cuando empieza la música|0,0.4,0.9,1.5. Los tiempos son absolutos, uno por palabra y separados por comas. Sin el tercer campo se usa el resaltado aproximado.</p>
 </section>
 
 <footer class="note" style="margin-top:22px">Benja Karaoke · Versión local · La sincronización depende de la precisión de los tiempos introducidos.</footer>
@@ -169,14 +255,57 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     for(let i=0;i<rows.length;i++){
       const row=rows[i].trim();
       if(!row)continue;
-      const m=row.match(/^(\d+(?:\.\d+)?)\s*\|\s*(.+)$/);
-      if(!m)throw new Error('Línea '+(i+1)+': usa el formato segundos|texto.');
+
+      const m=row.match(/^(\d+(?:\.\d+)?)\s*\|\s*(.*?)\s*(?:\|\s*(.*))?$/);
+      if(!m||!m[2].trim()){
+        throw new Error('Línea '+(i+1)+': usa segundos|texto o segundos|texto|tiempos.');
+      }
+
       const time=Number(m[1]);
-      if(!Number.isFinite(time))throw new Error('Línea '+(i+1)+': el tiempo no es válido.');
-      if(parsed.length&&time<=parsed[parsed.length-1].time)throw new Error('Línea '+(i+1)+': el tiempo debe ser mayor que el de la frase anterior.');
-      parsed.push({time:time,text:m[2].trim()});
+      if(!Number.isFinite(time)||time<0){
+        throw new Error('Línea '+(i+1)+': el tiempo debe ser un número no negativo.');
+      }
+      if(parsed.length&&time<=parsed[parsed.length-1].time){
+        throw new Error('Línea '+(i+1)+': el inicio debe ser mayor que el de la frase anterior.');
+      }
+
+      const text=m[2].trim();
+      const words=text.split(/\s+/);
+      let wordTimes=null;
+
+      if(m[3]!==undefined){
+        const rawTimes=m[3].trim();
+        if(!rawTimes){
+          throw new Error('Línea '+(i+1)+': faltan los tiempos de las palabras.');
+        }
+
+        wordTimes=rawTimes.split(',').map(v=>Number(v.trim()));
+        if(wordTimes.length!==words.length){
+          throw new Error('Línea '+(i+1)+': hay '+words.length+' palabras, pero '+wordTimes.length+' tiempos.');
+        }
+
+        for(let j=0;j<wordTimes.length;j++){
+          if(!Number.isFinite(wordTimes[j])||wordTimes[j]<time){
+            throw new Error('Línea '+(i+1)+': cada tiempo de palabra debe ser válido y no anterior al inicio de la frase.');
+          }
+          if(j>0&&wordTimes[j]<=wordTimes[j-1]){
+            throw new Error('Línea '+(i+1)+': los tiempos de palabra deben ser estrictamente crecientes.');
+          }
+        }
+      }
+
+      parsed.push({time,text,wordTimes});
     }
+
     if(!parsed.length)throw new Error('Introduce al menos una línea.');
+
+    for(let i=0;i<parsed.length-1;i++){
+      const current=parsed[i],next=parsed[i+1];
+      if(current.wordTimes&&current.wordTimes[current.wordTimes.length-1]>=next.time){
+        throw new Error('La última palabra de la frase '+(i+1)+' debe empezar antes de la frase '+(i+2)+'.');
+      }
+    }
+
     return parsed;
   }
 
@@ -222,13 +351,22 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     if(!lines.length||!audioReady)return;
     let lo=0,hi=lines.length-1,index=-1;
     while(lo<=hi){const mid=(lo+hi)>>1;if(lines[mid].time<=time){index=mid;lo=mid+1;}else hi=mid-1;}
-    let active=0,key=String(index);
+    let active=-1,key=String(index);
     if(index>=0){
-      const words=lines[index].text.split(/\s+/);
-      const end=lines[index+1]?lines[index+1].time:Infinity;
-      const dur=end-lines[index].time;
-      const prog=dur>0&&Number.isFinite(dur)?Math.max(0,Math.min(0.999,(time-lines[index].time)/dur)):0;
-      active=Math.min(words.length-1,Math.floor(prog*words.length));
+      const line=lines[index];
+      const words=line.text.split(/\s+/);
+      if(line.wordTimes){
+        for(let i=0;i<line.wordTimes.length;i++){
+          if(line.wordTimes[i]<=time)active=i;
+          else break;
+        }
+      }else{
+        const end=lines[index+1]?lines[index+1].time:Infinity;
+        const dur=end-line.time;
+        const prog=dur>0&&Number.isFinite(dur)?Math.max(0,Math.min(0.999,(time-line.time)/dur)):0;
+        active=Math.floor(prog*words.length);
+      }
+      active=Math.min(words.length-1,active);
       key+=':'+active;
     }
     if(key===lastKey)return;
@@ -306,37 +444,157 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   document.addEventListener('fullscreenchange',syncFsUi);
   document.addEventListener('webkitfullscreenchange',syncFsUi);
 
-  /* Eventos: letra y archivo */
-  $('loadLyrics').addEventListener('click',()=>{
-    try{
-      lines=parseLyrics();
-      lyricsError.textContent='';lyricsError.classList.remove('error');
-      editor.removeAttribute('aria-invalid');
-      setStatus('Letra cargada: '+lines.length+' frases.');
-      refreshState();
-    }catch(err){
-      lyricsError.textContent=err.message;lyricsError.classList.add('error');
-      editor.setAttribute('aria-invalid','true');
+  /* Biblioteca local de esta sesión */
+  const songList=$('songList');
+  const librarySearch=$('librarySearch');
+  const libraryCount=$('libraryCount');
+  const externalUrl=$('externalUrl');
+  const externalStatus=$('externalStatus');
+
+  let songQueue=[];
+  let currentSongIndex=-1;
+  let currentSongName='';
+
+  function formatBytes(bytes){
+    if(!Number.isFinite(bytes)||bytes<0)return '';
+    if(bytes<1024)return bytes+' B';
+    if(bytes<1048576)return (bytes/1024).toFixed(1)+' KB';
+    return (bytes/1048576).toFixed(1)+' MB';
+  }
+
+  function renderSongQueue(){
+    const query=librarySearch.value.trim().toLocaleLowerCase();
+    const visible=songQueue.map((song,index)=>({song,index}))
+      .filter(item=>item.song.name.toLocaleLowerCase().includes(query));
+
+    libraryCount.textContent=visible.length+' de '+songQueue.length+
+      (songQueue.length===1?' canción':' canciones');
+
+    songList.replaceChildren();
+
+    if(!visible.length){
+      const emptyRow=document.createElement('div');
+      emptyRow.className='library-empty';
+      emptyRow.textContent=songQueue.length
+        ?'No hay canciones que coincidan con la búsqueda.'
+        :'Selecciona uno o varios archivos de audio para empezar.';
+      songList.appendChild(emptyRow);
+      return;
     }
-  });
-  $('demo').addEventListener('click',()=>{
-    editor.value=example;
-    lyricsError.textContent='';editor.removeAttribute('aria-invalid');
-    setStatus('Ejemplo restaurado. Pulsa «Cargar letra».');
-  });
-  file.addEventListener('change',()=>{
-    const sel=file.files&&file.files[0];
-    if(!sel)return;
-    if(objectUrl)URL.revokeObjectURL(objectUrl);
+
+    visible.forEach(({song,index})=>{
+      const item=document.createElement('div');
+      item.className='song-item'+(index===currentSongIndex?' selected':'');
+
+      const info=document.createElement('div');
+      info.className='song-info';
+
+      const name=document.createElement('span');
+      name.className='song-name';
+      name.textContent=song.name;
+
+      const meta=document.createElement('span');
+      meta.className='song-meta';
+      meta.textContent=formatBytes(song.size)+(index===currentSongIndex?' · Seleccionada':' · En cola');
+
+      info.append(name,meta);
+
+      const actions=document.createElement('div');
+      actions.className='song-actions';
+
+      const play=document.createElement('button');
+      play.type='button';
+      play.textContent=index===currentSongIndex?'Seleccionada':'Reproducir';
+      play.setAttribute('aria-label','Reproducir '+song.name);
+      play.addEventListener('click',()=>loadLocalSong(index));
+
+      const remove=document.createElement('button');
+      remove.type='button';
+      remove.className='secondary';
+      remove.textContent='Quitar';
+      remove.setAttribute('aria-label','Quitar '+song.name+' de la biblioteca');
+      remove.addEventListener('click',()=>{
+        const wasCurrent=index===currentSongIndex;
+        songQueue.splice(index,1);
+
+        if(index<currentSongIndex)currentSongIndex--;
+        else if(wasCurrent){
+          audio.pause();
+          const previousUrl=objectUrl;
+          objectUrl=null;
+          audio.removeAttribute('src');
+          audio.load();
+          if(previousUrl)URL.revokeObjectURL(previousUrl);
+          currentSongIndex=-1;
+          currentSongName='';
+          audioReady=false;
+          refreshState();
+          setStatus('Canción quitada de la biblioteca.');
+        }
+
+        renderSongQueue();
+      });
+
+      actions.append(play,remove);
+      item.append(info,actions);
+      songList.appendChild(item);
+    });
+  }
+
+  function loadLocalSong(index){
+    if(index<0||index>=songQueue.length)return;
+
+    const song=songQueue[index];
     audio.pause();
-    audioReady=false;refreshState();
-    objectUrl=URL.createObjectURL(sel);
-    audio.src=objectUrl;audio.load();
-    setStatus('Cargando: '+sel.name);
-  });
+    audioReady=false;
+    currentSongIndex=index;
+    currentSongName=song.name;
+    refreshState();
+
+    const previousUrl=objectUrl;
+    objectUrl=URL.createObjectURL(song);
+    audio.src=objectUrl;
+    audio.load();
+    if(previousUrl)URL.revokeObjectURL(previousUrl);
+
+    setStatus('Cargando canción: '+song.name);
+    renderSongQueue();
+  }
+
+  function openExternalSource(source){
+    const raw=externalUrl.value.trim();
+    if(!raw){
+      externalStatus.textContent='Pega primero un enlace de '+source+'.';
+      return;
+    }
+
+    let parsed;
+    try{parsed=new URL(raw);}catch{
+      externalStatus.textContent='El enlace no tiene un formato válido.';
+      return;
+    }
+
+    if(parsed.protocol!=='https:'){
+      externalStatus.textContent='Por seguridad, utiliza un enlace HTTPS.';
+      return;
+    }
+
+    const host=parsed.hostname.toLowerCase();
+    const valid=source==='youtube'
+      ?(host==='youtube.com'||host.endsWith('.youtube.com')||host==='youtu.be'||host==='www.youtu.be')
+      :(host==='spotify.com'||host.endsWith('.spotify.com'));
+
+    if(!valid){
+      externalStatus.textContent='El enlace no pertenece a '+source+'.';
+      return;
+    }
+
+    window.open(parsed.href,'_blank','noopener,noreferrer');
+    externalStatus.textContent='Enlace validado. Se abrió '+source+' en otra pestaña.';
+  }
 
   /* Eventos: audio */
-  audio.addEventListener('loadedmetadata',()=>{audioReady=true;setStatus('Audio listo: '+(file.files[0]?file.files[0].name:''));refreshState();syncVolumeUi();});
+  audio.addEventListener('loadedmetadata',()=>{audioReady=true;setStatus('Audio listo: '+currentSongName);refreshState();syncVolumeUi();});
   audio.addEventListener('durationchange',()=>{syncControls();update();});
   audio.addEventListener('error',()=>{
     audioReady=false;refreshState();
@@ -350,6 +608,54 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   audio.addEventListener('seeked',()=>{lastKey='';update();});
   audio.addEventListener('timeupdate',()=>{if(!rafId)update();});
   audio.addEventListener('volumechange',syncVolumeUi);
+
+  /* Eventos: biblioteca */
+  file.addEventListener('change',()=>{
+    const seleccionados=Array.from(file.files||[]);
+    if(!seleccionados.length)return;
+
+    const extensionesAudio=/\.(mp3|wav|m4a|aac|ogg|oga|opus|flac|webm|mp4|aif|aiff|wma|alac)$/i;
+    const validos=seleccionados.filter(song=>
+      (typeof song.type==='string'&&song.type.toLowerCase().startsWith('audio/'))||
+      extensionesAudio.test(song.name)
+    );
+
+    const clave=song=>[song.name,song.size,song.lastModified||0].join('\u0000');
+    const existentes=new Set(songQueue.map(clave));
+    let agregados=0;
+    let duplicados=0;
+
+    validos.forEach(song=>{
+      const id=clave(song);
+      if(existentes.has(id)){
+        duplicados++;
+        return;
+      }
+      songQueue.push(song);
+      existentes.add(id);
+      agregados++;
+    });
+
+    const rechazados=seleccionados.length-validos.length;
+    file.value='';
+    renderSongQueue();
+
+    if(!validos.length){
+      setStatus('No se encontraron archivos de audio compatibles.',true);
+    }else if(agregados){
+      let mensaje='Se añadieron '+agregados+(agregados===1?' canción':' canciones')+'.';
+      if(duplicados)mensaje+=' Duplicados omitidos: '+duplicados+'.';
+      if(rechazados)mensaje+=' Archivos no reconocidos como audio: '+rechazados+'.';
+      setStatus(mensaje, false);
+    }else{
+      setStatus('No se añadieron canciones nuevas: los archivos ya estaban en la biblioteca.');
+    }
+  });
+
+  librarySearch.addEventListener('input',renderSongQueue);
+
+  $('openYoutube').addEventListener('click',()=>openExternalSource('youtube'));
+  $('openSpotify').addEventListener('click',()=>openExternalSource('spotify'));
 
   /* Eventos: controles */
   playBtn.addEventListener('click',togglePlay);

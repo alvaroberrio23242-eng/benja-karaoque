@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import importlib.metadata
 import os
@@ -12,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent
 PYTHON_DIR = BASE_DIR / ".venv" / "Scripts"
 MAX_CONTENT_LENGTH = 1024 * 1024 * 1024  # 1 GiB; limite para futuras cargas.
 
-app = Flask(__name__, static_folder=None)
+app = Flask(__name__, static_folder="static", static_url_path="/static")
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
 
