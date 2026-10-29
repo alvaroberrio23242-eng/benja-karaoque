@@ -4,6 +4,11 @@ import importlib.metadata
 import os
 import shutil
 import sys
+import json
+import re
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
@@ -122,6 +127,7 @@ def config():
             "manual_lyrics_timing": True,
             "demucs_api_processing": False,
             "automatic_word_alignment": False,
+            "automatic_lyrics_lookup": True,
             "persistent_library": False,
         },
         "environment": (
@@ -129,6 +135,88 @@ def config():
         ),
     }), 200
 
+
+
+def lrclib_search(track: str, artist: str = "") -> dict:
+    """Busca letras en LRCLIB sin descargar audio ni depender de APIs de pago."""
+    params = {"q": f"{artist} {track}".strip()}
+    url = "https://lrclib.net/api/search?" + urlencode(params)
+    req = Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "BenjaKaraoke/1.0 (lyrics lookup)",
+        },
+        method="GET",
+    )
+    with urlopen(req, timeout=8) as response:
+        raw = response.read(1_000_001)
+    if len(raw) > 1_000_000:
+        raise ValueError("La respuesta del proveedor es demasiado grande.")
+    data = json.loads(raw.decode("utf-8"))
+    if not isinstance(data, list):
+        raise ValueError("El proveedor devolvió un formato inesperado.")
+    candidates = []
+    for item in data[:30]:
+        if not isinstance(item, dict):
+            continue
+        synced = item.get("syncedLyrics")
+        plain = item.get("plainLyrics")
+        if not isinstance(synced, str):
+            synced = ""
+        if not isinstance(plain, str):
+            plain = ""
+        lyrics = synced or plain
+        if not lyrics.strip():
+            continue
+        candidates.append({
+            "track": str(item.get("trackName") or "")[:200],
+            "artist": str(item.get("artistName") or "")[:200],
+            "album": str(item.get("albumName") or "")[:200],
+            "duration": item.get("duration"),
+            "synced": bool(synced.strip()),
+            "lyrics": lyrics[:100_000],
+            "source": "LRCLIB",
+        })
+    candidates.sort(key=lambda item: (item["synced"], bool(item["artist"])), reverse=True)
+    return {"results": candidates[:5]}
+
+
+@app.get("/api/lyrics/search")
+def lyrics_search():
+    track = request.args.get("track", "").strip()
+    artist = request.args.get("artist", "").strip()
+    if not track:
+        return jsonify({
+            "error": "missing_track",
+            "message": "Escribe el nombre de la canción para buscar la letra."
+        }), 400
+    if len(track) > 200 or len(artist) > 200:
+        return jsonify({
+            "error": "invalid_query",
+            "message": "El título y el artista deben tener como máximo 200 caracteres."
+        }), 400
+    try:
+        result = lrclib_search(track, artist)
+    except HTTPError as exc:
+        if exc.code == 404:
+            return jsonify({"results": [], "source": "LRCLIB"}), 200
+        return jsonify({
+            "error": "lyrics_provider_error",
+            "message": "El proveedor de letras no está disponible ahora."
+        }), 502
+    except (URLError, TimeoutError, OSError):
+        return jsonify({
+            "error": "lyrics_provider_unavailable",
+            "message": "No se pudo conectar con el proveedor de letras."
+        }), 502
+    except (ValueError, json.JSONDecodeError, UnicodeDecodeError):
+        return jsonify({
+            "error": "lyrics_provider_invalid_response",
+            "message": "El proveedor devolvió una respuesta no válida."
+        }), 502
+    result["source"] = "LRCLIB"
+    return jsonify(result), 200
 
 @app.errorhandler(404)
 def not_found(_error):

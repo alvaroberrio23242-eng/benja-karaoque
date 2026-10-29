@@ -47,6 +47,7 @@ def test_config_distinguishes_available_and_pending_features(client):
     assert features["manual_lyrics_timing"] is True
     assert features["demucs_api_processing"] is False
     assert features["automatic_word_alignment"] is False
+    assert features["automatic_lyrics_lookup"] is True
     assert features["persistent_library"] is False
 
 
@@ -119,3 +120,62 @@ def test_frontend_checks_api_without_replacing_player_status(client):
     assert "/api/health" in html
     assert "/api/config" in html
     assert "karaoke local sigue funcionando" in html
+
+
+
+def test_lyrics_search_requires_track(client):
+    response = client.get("/api/lyrics/search")
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "missing_track"
+
+
+def test_lyrics_search_rejects_overlong_query(client):
+    response = client.get("/api/lyrics/search?track=" + ("a" * 201))
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "invalid_query"
+
+
+def test_lyrics_search_returns_provider_results(client, monkeypatch):
+    def fake_search(track, artist):
+        assert track == "Ojos color sol"
+        assert artist == "Calle 13"
+        return {"results": [{
+            "track": "Ojos color sol",
+            "artist": "Calle 13",
+            "album": "Example",
+            "duration": 200,
+            "synced": True,
+            "lyrics": "[00:01.00]Prueba de letra",
+            "source": "LRCLIB",
+        }]}
+
+    monkeypatch.setattr(app_module, "lrclib_search", fake_search)
+    response = client.get(
+        "/api/lyrics/search?track=Ojos%20color%20sol&artist=Calle%2013"
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["source"] == "LRCLIB"
+    assert data["results"][0]["synced"] is True
+
+
+def test_lyrics_search_handles_provider_unavailable(client, monkeypatch):
+    from urllib.error import URLError
+
+    def fail_search(track, artist):
+        raise URLError("offline")
+
+    monkeypatch.setattr(app_module, "lrclib_search", fail_search)
+    response = client.get("/api/lyrics/search?track=test")
+    assert response.status_code == 502
+    assert response.get_json()["error"] == "lyrics_provider_unavailable"
+
+
+def test_frontend_exposes_automatic_lyrics_search(client):
+    response = client.get("/karaoke.html")
+    html = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert 'id="findLyrics"' in html
+    assert 'id="lyricsTrack"' in html
+    assert "/api/lyrics/search?" in html
+    assert "lrcToEditorText" in html

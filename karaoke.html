@@ -241,6 +241,20 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <section class="panel">
   <h2>2. Letra y tiempos</h2>
   <p>Formato: <code>segundos|texto</code>, una frase por línea, en orden creciente.</p>
+  <div class="source-grid" aria-label="Búsqueda automática de letras">
+    <div class="source-field">
+      <label for="lyricsTrack">Canción</label>
+      <input id="lyricsTrack" type="text" maxlength="200" placeholder="Nombre de la canción">
+    </div>
+    <div class="source-field">
+      <label for="lyricsArtist">Artista (opcional)</label>
+      <input id="lyricsArtist" type="text" maxlength="200" placeholder="Nombre del artista">
+    </div>
+  </div>
+  <div class="actions">
+    <button id="findLyrics" type="button">Buscar letra gratis</button>
+  </div>
+  <p id="lyricsSearchStatus" class="msg" role="status" aria-live="polite">Busca letras disponibles en LRCLIB. La disponibilidad depende de su catálogo.</p>
   <label for="lyrics">Letra sincronizada</label>
   <textarea id="lyrics" spellcheck="false" aria-describedby="lyricsError">0|Cuando empieza la música
 4|prepara tu voz
@@ -822,7 +836,95 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   });
 
 
-  const API_BASE_URL='https://benja-karaoque-api.onrender.com';
+  const API_BASE_URL=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'':'https://benja-karaoque-api.onrender.com';
+  const lyricsTrack=$('lyricsTrack');
+  const lyricsArtist=$('lyricsArtist');
+  const findLyricsBtn=$('findLyrics');
+  const lyricsSearchStatus=$('lyricsSearchStatus');
+
+  function lrcToEditorText(lrc){
+    const output=[];
+    const tag=/\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
+    for(const rawLine of lrc.split(/\r?\n/)){
+      const matches=[...rawLine.matchAll(tag)];
+      const text=rawLine.replace(tag,'').trim();
+      if(!text||!matches.length)continue;
+      for(const match of matches){
+        const fraction=match[3] ? Number('0.'+match[3].padEnd(3,'0')) : 0;
+        const seconds=Number(match[1])*60+Number(match[2])+fraction;
+        output.push({time:seconds,text});
+      }
+    }
+    output.sort((a,b)=>a.time-b.time);
+    const merged=[];
+    for(const line of output){
+      const previous=merged[merged.length-1];
+      if(previous&&previous.time===line.time)previous.text+=' '+line.text;
+      else merged.push({time:line.time,text:line.text});
+    }
+    return merged.map(line=>line.time.toFixed(3).replace(/0+$/,'').replace(/\.$/,'')+'|'+line.text)
+      .join('\n');
+  }
+
+  async function findLyrics(){
+    const track=(lyricsTrack.value.trim()||currentSongName.replace(/\.[^.]+$/,'')).trim();
+    const artist=lyricsArtist.value.trim();
+    if(!track){
+      lyricsSearchStatus.textContent='Escribe el título o selecciona primero un audio local.';
+      lyricsSearchStatus.classList.add('error');
+      return;
+    }
+    lyricsTrack.value=track;
+    findLyricsBtn.disabled=true;
+    lyricsSearchStatus.classList.remove('error');
+    lyricsSearchStatus.textContent='Buscando letra en LRCLIB…';
+    try{
+      const params=new URLSearchParams({track,artist});
+      const response=await fetch(API_BASE_URL+'/api/lyrics/search?'+params.toString(),{
+        method:'GET',headers:{Accept:'application/json'},cache:'no-store'
+      });
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.message||'No se pudo buscar la letra.');
+      const result=(data.results||[])[0];
+      if(!result){
+        lyricsSearchStatus.textContent='No encontré una letra para esa búsqueda. Prueba con título y artista exactos.';
+        return;
+      }
+      let converted='';
+      if(result.synced){
+        converted=lrcToEditorText(result.lyrics||'');
+      }else{
+        const plain=(result.lyrics||'').split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
+        converted=plain.map((line,index)=>(index*4)+'|'+line).join('\n');
+      }
+      if(!converted.trim())throw new Error('La letra encontrada no contiene tiempos que pueda convertir.');
+      editor.value=converted;
+      try{
+        lines=parseLyrics();
+        lastKey='';
+        refreshState();
+      }catch(error){
+        lines=[];
+        refreshState();
+        throw error;
+      }
+      const timing=result.synced
+        ?'Tiempos por línea encontrados; el resaltado por palabra es aproximado.'
+        :'Letra sin sincronización: se asignaron 4 segundos estimados por línea. Ajusta los tiempos antes de cantar.';
+      lyricsSearchStatus.textContent='Letra encontrada: '+(result.track||track)+' — '+(result.artist||artist||'artista no indicado')+'. '+timing;
+      lyricsSearchStatus.title='Fuente: '+(result.source||'LRCLIB');
+    }catch(error){
+      lyricsSearchStatus.textContent=error&&error.message?error.message:'Error al buscar letras.';
+      lyricsSearchStatus.classList.add('error');
+    }finally{
+      findLyricsBtn.disabled=false;
+    }
+  }
+
+  findLyricsBtn.addEventListener('click',findLyrics);
+  lyricsTrack.addEventListener('keydown',event=>{
+    if(event.key==='Enter'){event.preventDefault();findLyrics();}
+  });
 
   async function checkApiStatus(){
     const controller=new AbortController();
@@ -852,7 +954,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
         throw new Error('La respuesta de la API no coincide con la aplicación.');
       }
 
-      apiStatus.textContent='API conectada · servidor operativo';
+      apiStatus.textContent='API conectada · letras automáticas disponibles';
       apiStatus.title='Python '+health.python_version+' · API '+health.api_version;
     }catch(error){
       apiStatus.textContent='API no disponible · el karaoke local sigue funcionando';
