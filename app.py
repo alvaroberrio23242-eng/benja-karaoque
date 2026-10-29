@@ -69,7 +69,7 @@ def demucs_executable() -> str | None:
 
 @app.get("/")
 def home():
-    return send_from_directory(BASE_DIR, "index.html")
+    return send_from_directory(BASE_DIR, "karaoke.html")
 
 
 @app.get("/karaoke.html")
