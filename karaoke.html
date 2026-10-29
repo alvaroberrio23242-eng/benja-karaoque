@@ -125,6 +125,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .source-actions button{flex:1}
 #externalUrl{margin:8px 0 12px}
 @media(max-width:650px){.library-tools,.source-grid{grid-template-columns:1fr}.song-item{align-items:flex-start;flex-wrap:wrap}.song-actions{width:100%}.song-actions button{flex:1}.library-count{padding-bottom:0}}
+
+#youtubePlayerWrap{margin-top:14px}
+#youtubePlayer{display:block;width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000}
+#recordingPanel{margin-top:18px;padding:15px;border:1px solid var(--border);border-radius:14px;background:#0b1020}
+#recordingPanel audio{width:100%;margin-top:12px}
+#recordingStatus{overflow-wrap:anywhere}
+#downloadRecording{display:inline-block;margin-top:12px}
 </style>
 </head>
 <body>
@@ -199,8 +206,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <div class="source-grid">
   <div class="source-card">
     <h3>YouTube</h3>
-    <p>Pega un enlace de YouTube para abrir la canción en su plataforma oficial.</p>
-    <button id="openYoutube" type="button" class="secondary">Abrir YouTube</button>
+    <p>Pega un enlace de YouTube para reproducirlo aquí. Algunos videos no permiten inserción.</p>
+    <button id="openYoutube" type="button" class="secondary">Reproducir enlace</button>
   </div>
   <div class="source-card">
     <h3>Spotify</h3>
@@ -212,7 +219,23 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <label for="externalUrl">Enlace de YouTube o Spotify</label>
 <input id="externalUrl" type="url" placeholder="https://www.youtube.com/watch?v=... o https://open.spotify.com/..." autocomplete="url">
 <p id="externalStatus" class="msg" role="status"></p>
-  <p class="note">El audio se reproduce en tu navegador. No se sube a ningún servidor.</p>
+  <div id="youtubePlayerWrap" hidden>
+    <iframe id="youtubePlayer" title="Video de YouTube para karaoke"
+      allow="autoplay; encrypted-media; picture-in-picture; web-share"
+      referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+  </div>
+  <section id="recordingPanel" aria-labelledby="recordingTitle">
+    <h3 id="recordingTitle">Grabar karaoke</h3>
+    <p class="note">Para grabar la música y tu voz, comparte la pestaña de YouTube con audio y permite el acceso al micrófono. La grabación completa depende de que el navegador entregue el audio compartido.</p>
+    <div class="source-actions">
+      <button id="startRecording" type="button">Iniciar grabación</button>
+      <button id="stopRecording" type="button" class="secondary" disabled>Detener</button>
+    </div>
+    <p id="recordingStatus" class="msg" role="status" aria-live="polite">La grabación comenzará cuando autorices los permisos.</p>
+    <audio id="recordingPreview" controls hidden></audio>
+    <p><a id="downloadRecording" hidden download="benja-karaoke.webm">Descargar grabación</a></p>
+  </section>
+  <p class="note">La grabación se procesa en tu navegador; no se envía automáticamente al servidor.</p>
 </section>
 
 <section class="panel">
@@ -572,31 +595,131 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       externalStatus.textContent='Pega primero un enlace de '+source+'.';
       return;
     }
-
     let parsed;
     try{parsed=new URL(raw);}catch{
       externalStatus.textContent='El enlace no tiene un formato válido.';
       return;
     }
-
     if(parsed.protocol!=='https:'){
       externalStatus.textContent='Por seguridad, utiliza un enlace HTTPS.';
       return;
     }
-
     const host=parsed.hostname.toLowerCase();
     const valid=source==='youtube'
-      ?(host==='youtube.com'||host.endsWith('.youtube.com')||host==='youtu.be'||host==='www.youtu.be')
+      ?(host==='youtube.com'||host.endsWith('.youtube.com')||host==='youtu.be')
       :(host==='spotify.com'||host.endsWith('.spotify.com'));
-
     if(!valid){
       externalStatus.textContent='El enlace no pertenece a '+source+'.';
       return;
     }
-
+    if(source==='youtube'){
+      let videoId='';
+      if(host==='youtu.be'){
+        videoId=parsed.pathname.split('/').filter(Boolean)[0]||'';
+      }else if(parsed.pathname==='/watch'){
+        videoId=parsed.searchParams.get('v')||'';
+      }else{
+        const parts=parsed.pathname.split('/').filter(Boolean);
+        const i=parts.findIndex(p=>['embed','shorts','live'].includes(p));
+        if(i>=0)videoId=parts[i+1]||'';
+      }
+      if(!/^[A-Za-z0-9_-]{11}$/.test(videoId)){
+        externalStatus.textContent='No pude identificar un video válido en ese enlace.';
+        return;
+      }
+      $('youtubePlayer').src='https://www.youtube-nocookie.com/embed/'+videoId+'?playsinline=1';
+      $('youtubePlayerWrap').hidden=false;
+      externalStatus.textContent='Video cargado. Si no reproduce, el propietario puede haber deshabilitado la inserción.';
+      $('youtubePlayerWrap').scrollIntoView({behavior:'smooth',block:'nearest'});
+      return;
+    }
     window.open(parsed.href,'_blank','noopener,noreferrer');
-    externalStatus.textContent='Enlace validado. Se abrió '+source+' en otra pestaña.';
+    externalStatus.textContent='Enlace validado. Spotify se abrió en otra pestaña.';
   }
+
+  /* Grabación local de audio compartido y micrófono. */
+  let recorder=null,recordingChunks=[],displayStream=null,micStream=null,mixContext=null,recordingUrl=null;
+  const startRecordingBtn=$('startRecording');
+  const stopRecordingBtn=$('stopRecording');
+  const recordingStatus=$('recordingStatus');
+  const recordingPreview=$('recordingPreview');
+  const downloadRecording=$('downloadRecording');
+
+  function releaseRecordingStreams(){
+    [displayStream,micStream].forEach(s=>{
+      if(s)s.getTracks().forEach(t=>t.stop());
+    });
+    displayStream=null;
+    micStream=null;
+    if(mixContext){
+      const ctx=mixContext;
+      mixContext=null;
+      ctx.close().catch(()=>{});
+    }
+  }
+
+  async function startRecording(){
+    if(!navigator.mediaDevices?.getDisplayMedia||
+       !navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){
+      recordingStatus.textContent='Este navegador no admite grabación de audio compartido. Usa Chrome actualizado mediante HTTPS.';
+      return;
+    }
+    startRecordingBtn.disabled=true;
+    recordingStatus.textContent='Selecciona la pestaña de YouTube y activa compartir audio; después autoriza el micrófono.';
+    try{
+      displayStream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});
+      if(!displayStream.getAudioTracks().length){
+        releaseRecordingStreams();
+        throw new Error('No se recibió audio compartido. Repite el proceso y activa compartir audio.');
+      }
+      micStream=await navigator.mediaDevices.getUserMedia({audio:true});
+      mixContext=new AudioContext();
+      await mixContext.resume();
+      const destination=mixContext.createMediaStreamDestination();
+      mixContext.createMediaStreamSource(new MediaStream(displayStream.getAudioTracks())).connect(destination);
+      mixContext.createMediaStreamSource(micStream).connect(destination);
+      recordingChunks=[];
+      const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'';
+      recorder=new MediaRecorder(destination.stream,mime?{mimeType:mime}:undefined);
+      recorder.addEventListener('dataavailable',e=>{
+        if(e.data&&e.data.size)recordingChunks.push(e.data);
+      });
+      recorder.addEventListener('stop',()=>{
+        const blob=new Blob(recordingChunks,{type:recorder?.mimeType||'audio/webm'});
+        if(recordingUrl)URL.revokeObjectURL(recordingUrl);
+        recordingUrl=URL.createObjectURL(blob);
+        recordingPreview.src=recordingUrl;
+        recordingPreview.hidden=false;
+        downloadRecording.href=recordingUrl;
+        downloadRecording.download='benja-karaoke-'+new Date().toISOString().replace(/[:.]/g,'-')+'.webm';
+        downloadRecording.hidden=false;
+        recordingStatus.textContent='Grabación lista ('+Math.round(blob.size/1024)+' KB). Escúchala y descárgala.';
+        releaseRecordingStreams();
+        startRecordingBtn.disabled=false;
+        stopRecordingBtn.disabled=true;
+      });
+      displayStream.getVideoTracks()[0]?.addEventListener('ended',()=>{
+        if(recorder&&recorder.state==='recording')recorder.stop();
+      });
+      recorder.start(250);
+      stopRecordingBtn.disabled=false;
+      recordingStatus.textContent='Grabando audio compartido y micrófono.';
+    }catch(e){
+      releaseRecordingStreams();
+      startRecordingBtn.disabled=false;
+      stopRecordingBtn.disabled=true;
+      recordingStatus.textContent=e?.message||'No se pudo iniciar la grabación. Revisa los permisos.';
+    }
+  }
+
+  startRecordingBtn.addEventListener('click',startRecording);
+  stopRecordingBtn.addEventListener('click',()=>{
+    if(recorder&&recorder.state==='recording'){
+      stopRecordingBtn.disabled=true;
+      recordingStatus.textContent='Preparando la grabación…';
+      recorder.stop();
+    }
+  });
 
   /* Eventos: audio */
   audio.addEventListener('loadedmetadata',()=>{audioReady=true;setStatus('Audio listo: '+currentSongName);refreshState();syncVolumeUi();});
