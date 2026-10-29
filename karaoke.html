@@ -362,10 +362,14 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
           else break;
         }
       }else{
-        const end=lines[index+1]?lines[index+1].time:Infinity;
-        const dur=end-line.time;
-        const prog=dur>0&&Number.isFinite(dur)?Math.max(0,Math.min(0.999,(time-line.time)/dur)):0;
-        active=Math.floor(prog*words.length);
+        const nextLine=lines[index+1];
+        const end=nextLine?nextLine.time:(fin&&audio.duration>line.time?audio.duration:null);
+        if(end!==null&&end>line.time){
+          const prog=Math.max(0,Math.min(0.999,(time-line.time)/(end-line.time)));
+          active=Math.floor(prog*words.length);
+        }else{
+          active=0;
+        }
       }
       active=Math.min(words.length-1,active);
       key+=':'+active;
@@ -736,7 +740,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     }
   }
 
-  try{lines=parseLyrics();}catch(e){}
+  try {
+    lines = parseLyrics();
+  } catch (error) {
+    lines = [];
+    const detail = error instanceof Error ? error.message : 'Formato de letra no valido.';
+    setStatus('No se pudo cargar la letra inicial: ' + detail, true);
+  }
   setSkip(5);
   refreshState();
   setPlayLabel();syncFsUi();syncVolumeUi();

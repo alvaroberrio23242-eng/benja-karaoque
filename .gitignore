@@ -38,3 +38,6 @@ separated/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Respaldos locales (variante con guion bajo)
+_backups/
